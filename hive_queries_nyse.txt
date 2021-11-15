@@ -1,0 +1,204 @@
+CREATE DATABASE IF NOT EXISTS nyse_<your-login-id>;
+
+USE nyse_<your-login-id>;
+
+set hive.cli.print.current.db=true;
+
+create table NYSEdaily (stexchange String,stock_symbol String,stock_date String,stock_price_open double, stock_price_high double, stock_price_low double, stock_price_close double, stock_volume double, stock_price_adj_close double) row format delimited fields terminated by "\t" lines terminated by "\n";
+
+show tables;
+
+describe nysedaily;
+
+describe formatted nysedaily;
+
+Load data local inpath '/home/<your-login-id>/nyse/NYSE_daily.tsv' overwrite into table nysedaily;
+-- In case you get any error messages in the above, open a duplicate session of Jigsaw lab and check if the file you gave in the command above exists of not or if there are any typos in the file name or directory name. You can do this bu giving the command below at $ prompt (Not at hive> prompt)
+-- $ ls -l <path-from-the-above-command>
+
+set hive.cli.print.header=true;
+
+select * from nysedaily limit 10;
+
+select * from nysedaily where stock_symbol=="JEF";
+
+create table NYSEdividends (divexchange String, divstock_symbol String, divstock_date String, dividends double) row format delimited fields terminated by "\t" lines terminated by "\n" stored as textfile;
+
+show tables;
+
+describe NYSEdividends;
+
+describe formatted NYSEdividends ;
+
+Load data inpath '/user/<your-login-id>/nyse/NYSE_dividends.tsv' overwrite into table nysedividends;
+-- In case you get any error messages in the above, open a duplicate session of Jigsaw lab and check if the file you gave in the command above exists of not or if there are any typos in the file name or directory name. You can do this bu giving the command below at $ prompt (Not at hive> prompt)
+-- $ hadoop fs -ls <path-from-the-above-command>
+
+After successfully loading data from the file in HDFS, Check for the file /user/<your-login-id>/nyse/NYSE_dividends.tsv by giving the follwoing command at $ prompt (Not at hive> prompt)
+-- $ hadoop fs -ls <path-from-the-above-command>
+You will notice that the file had been moved, unlike the case of a loading data from a local file.
+
+Querying
+--------
+select * from NYSEdividends limit 20;
+
+select * from NYSEdividends where dividends>=1 limit 20;
+
+select divstock_symbol, count(divstock_symbol) as divcount from NYSEdividends group by divstock_symbol;
+
+select divstock_symbol, count(divstock_symbol) as divcount from NYSEdividends group by divstock_symbol having divcount>10;
+
+select divstock_symbol, count(divstock_symbol) as divcount from NYSEdividends where dividends>=0.5 group by divstock_symbol having divcount>10;
+
+select a.stock_symbol, a.stock_price_close from nysedaily a join nysedividends b on a.stock_symbol=b.divstock_symbol AND a.stock_date=b.divstock_date limit 10;
+
+select a.stock_symbol, a.stock_price_close, b.dividends, b.divstock_date from nysedaily a join nysedividends b on a.stock_symbol=b.divstock_symbol AND a.stock_date=b.divstock_date where a.stock_price_close>=20;
+
+drop table nysedividends;
+-- The above command drops the table. So we would lose the initial input file as it was moved from its locaiton to Hive Warehouse location. This is one of the characteristics of Managed Tables.
+
+Prep for external table creation:
+=================================
+Now, re-copy the file NYSE_dividends.tsv from nyse sub-directory to your newly created HDFS sub-directory named nyse
+$ hadoop fs -put nyse/NYSE_dividends.tsv nyse
+OR
+$ hadoop fs -put nyse/NYSE_dividends.tsv nyse/NYSE_dividends.tsv
+OR
+$ hadoop fs -put /home/<your-login-id>/nyse/NYSE_dividends.tsv /user/<your-login-id>/nyse/NYSE_dividends.tsv
+
+===========
+External table:
+Create an external table in Hive with the command below which has the key word external before the word table and at the end has the location specified. Use any name for specifying the location but make sure there is no file or sub-directory already existing with this name.
+
+create external table NYSEdividends (divexchange String, divstock_symbol String, divstock_date String, dividends double) row format delimited fields terminated by "\t" lines terminated by "\n" stored as textfile location '/user/<your-login-id>/nysediv_ext';
+
+-- With the command below from $ prompt, you will see that a sub-dir is created by Hive with the name you supplied above.
+$ hadoop fs -ls /user/<your-login-id>
+
+-- In Hive check the table properties with these commands.
+show tables;
+describe NYSEdividends;
+describe formatted NYSEdividends;
+
+-- Notice the table type and the location.
+
+-- Now let us load the data from the HDFS input directory.
+load data inpath '/user/<your-login-id>/nyse/NYSE_dividends.tsv' overwrite into table nysedividends;
+
+-- Now from the Linux prompt list the contents of the above HDFS input directory by giving the command
+$ hadoop fs -ls /user/<your-login-id>/nyse
+-- You will notice that the file is moved from the above location
+-- List the contents of the HDFS directory specified as location in the creation statement
+$ hadoop fs -ls /user/<your-login-id>/nysediv_ext
+-- You will notice that the file is moved to this location
+-- You can drop the above extrenal table by the Hive command below from the Hive prompt.
+hive> drop table nysediv_ext
+-- Even if you drop the above table you will notice that the file with the data in the above location will still be present. It will not be removed by Hive as it is an external table. You can check this by the command below from the Linux prompt:
+
+$ hadoop fs -ls /user/<your-login-id>/nysediv_ext
+
+-- Even if you drop the above table you will notice that the file with the data in the above location will still be present. It will not be removed by Hive as it is an external table.
+-- More importabtly note that once you define a Hive external table specifying a certain directory as the location, it does not really matter how the data is loaded to the table. That is you can use any of the different ways to put a file in the Hive xtarnal table location. For example:
+$ hadoop fs -put <local file name> <hive table location>
+$ hadoop fs -cp <file in any HDFS location> <hive table location>
+Or you can use Hive's load command as well.
+=================================================
+
+
+Writing the output to different target locations:
+-------------------------------------------------
+
+-- Make sure you create the dividends table again and load the data.
+-- The following commands show how you can write the output of Hive queries to different destinations.
+
+insert overwrite local directory 'nyseoutput_lfs' row format delimited
+fields terminated by '\t'
+lines terminated by '\n'
+select a.stock_symbol, a.stock_price_close, b.dividends,b.divstock_date from nysedaily a join nysedividends b on a.stock_symbol=b.divstock_symbol AND a.stock_date=b.divstock_date where a.stock_price_close>=20;
+
+-- From Linux prompt you can give the command
+$ ls -l nyseoutput_lfs
+$ head nyseoutput_lfs/00*
+-- to see the contents of the outout directory created by Hive and the top few lines of the outputfile.
+
+insert overwrite directory 'nyseoutput_hdfs'
+select a.stock_symbol, a.stock_price_close, b.dividends,b.divstock_date from nysedaily a join nysedividends b on a.stock_symbol=b.divstock_symbol AND a.stock_date=b.divstock_date where a.stock_price_close>=20;
+
+-- From Linux prompt you can give the command
+$ hadoop fs -ls nyseoutput_hdfs
+$ hadoop fs -tail nyseoutput_hdfs/00*
+-- to see the contents of the outout directory created by Hive and the last few lines (1KB) of the outputfile.
+
+create table nyseoutput_tbl as select a.stock_symbol, a.stock_price_close, b.dividends,b.divstock_date from nysedaily a join nysedividends b on a.stock_symbol=b.divstock_symbol AND a.stock_date=b.divstock_date where a.stock_price_close>=20;
+
+select * from nyseoutput_tbl limit 10;
+
+
+===================
+Partitioned Tables:
+-------------------
+
+create external table NYSEdaily_part (stexchange String,stock_symbol String,stock_date String,stock_price_open double, stock_price_high double, stock_price_low double, stock_price_close double, stock_volume double, stock_price_adj_close double) PARTITIONED BY (Year String) row format delimited fields terminated by "\t" lines terminated by "\n" location '/user/<your-login-id>/nysedaily_part';
+
+select *, substr(stock_date,length(stock_date)-3) as year from nysedaily limit 10;
+
+set hive.exec.dynamic.partition.mode=nonstrict;
+
+describe NYSEdaily_part;
+
+INSERT OVERWRITE TABLE NYSEdaily_part PARTITION (year) select *, substr(stock_date,length(stock_date)-3) as year from nysedaily;
+
+show partitions nysedaily_part;
+
+-- You can use all the select quries with group by, join etc clauses on the partitioned tables just as any other table.
+
+-- List contents of the directory given in the create table command using the follwoing from Linux prompt:
+
+$ hadoop fs -ls /user/<your-login-id>/nysedaily_part
+
+-- You will notice that several sub-directories are created in the above which are the partitions and the names will be 'year=1970' or 'year=2009' etc
+-- List contents of the partitions using the command below.
+
+$ hadoop fs -ls /user/<your-login-id>/nysedaily_part/year=1970
+
+-- Display the contents of the data file in the partition with the command.
+
+$ hadoop fs -cat /user/<your-login-id>/nysedaily_part/year=1970
+
+-- The data will be a small subset of the entire daily data which belongs to this partition.
+
+
+===============================
+Clustering records or Bucketing
+-------------------------------
+
+create external table NYSEdaily_bucket (stexchange String,stock_symbol String,stock_date String,stock_price_open double, stock_price_high double, stock_price_low double, stock_price_close double, stock_volume double, stock_price_adj_close double) PARTITIONED BY (Year String) CLUSTERED BY (stock_symbol) INTO 50 BUCKETS row format delimited fields terminated by "\t" lines terminated by "\n" location '/user/<your_login_id>/nysedaily_bucket';
+
+set hive.exec.dynamic.partition.mode=nonstrict;
+set hive.enforce.bucketing = true;
+
+describe NYSEdaily_bucket;
+
+select *, substr(stock_date,length(stock_date)-3) as year from nysedaily limit 10;
+
+INSERT INTO TABLE NYSEdaily_bucket PARTITION (year) select *, substr(stock_date,length(stock_date)-3) as year from nysedaily;
+
+show partitions nysedaily_bucket;
+
+-- You can use all the select quries with group by, join etc clauses on the partitioned tables just as any other table.
+
+-- List contents of the directory given in the create table command using the follwoing from Linux prompt:
+
+$ hadoop fs -ls /user/<your-login-id>/nysedaily_bucket
+
+-- You will notice that several sub-directories are created in the above which are the partitions and the names will be 'year=1970' or 'year=2009' etc
+-- List contents of the partitions using the command below.
+
+$ hadoop fs -ls /user/<your-login-id>/nysedaily_bucket/year=1970
+
+-- Display the contents of the data file in the partition with the command.
+
+$ hadoop fs -cat /user/<your-login-id>/nysedaily_bucket/year=1970
+
+-- The data will be a small subset of the entire daily data which belongs to this partition.
+

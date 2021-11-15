@@ -1,0 +1,60 @@
+Create a sub-directory in the current directory
+$ mkdir nyse
+
+Change to moviedata directory
+$ cd nyse
+
+Print current working directory
+$ pwd
+(Should show present working directory as /home/<your-login-id>/nyse)
+
+Copy all files from the shared folder to the present working directory (i.e. nyse)
+$ cp /<Download>/sharedfolder>/* .
+
+List contents of the present working directory
+$ ls -l
+
+==>Follwoing commands are given as an exercise in Linux Commands. Can be skipped in Hive session.<==
+Show top 10 lines of the file NYSE_daily
+$ head NYSE_daily
+
+Show top 20 lines of the file NYSE_dividends
+$ head -20 NYSE_dividends
+
+Show last 10 lines of the file NYSE_daily
+$ tail NYSE_daily
+
+Show last 20 lines of the file NYSE_dividends
+$ tail -20 NYSE_dividends
+
+Direct the top 10 lines from NYSE_daily to a file called NYSE_daily.sample
+$ head NYSE_daily > NYSE_daily.sample
+
+Direct the last 20 lines of the file NYSE_daily to the same file in append mode
+$ tail -20 NYSE_daily >> NYSE_daily.sample
+
+Display the contents of the file NYSE_daily.sample
+$ cat NYSE_daily.sample
+
+Get the line count of the file NYSE_daily.sample
+$ wc -l NYSE_daily.sample
+
+Remove the file NYSE_daily.sample
+$ rm NYSE_daily.sample
+==> ========================== <==
+
+Direct lines starting from 2nd line to the end of the file NYSE_daily to NYSE_daily.tsv
+$ tail -n +2 NYSE_daily > NYSE_daily.tsv
+
+Get the line count of the files NYSE_daily and NYSE_daily.tsv
+$ wc -l NYSE_daily*
+
+Direct lines starting from 2nd line to the end of the file NYSE_dividends to NYSE_dividends.tsv
+$ tail -n +2 NYSE_dividends > NYSE_dividends.tsv
+
+Get the line count of the files NYSE_dividends and NYSE_dividends.tsv
+$ wc -l NYSE_dividends*
+
+Show top 10 lines of the file NYSE_d*.tsv
+$ head NYSE_d*.tsv
+(You should see that the first line with the headers is not present in these files)

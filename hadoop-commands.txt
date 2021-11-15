@@ -1,0 +1,40 @@
+Make sure you are working from your home directory in Linux by giving the following commands.
+$ cd
+$ pwd
+(Should show present working directory as /home/<your-login-id>)
+
+List contents of your HDFS root (/) directory 
+$ hadoop fs -ls /
+
+List contents of your HDFS default directory 
+$ hadoop fs -ls /user/<your login-id>
+OR 
+$ hadoop fs -ls 
+# The above lists contents of your HDFS default (or your HDFS home) directory because /user/<your login-id is assumed by default>
+
+Create a sub-directory nyse in your HDFS default directory
+$ hadoop fs -mkdir nyse
+
+List contents of your HDFS default directory 
+$ hadoop fs -ls
+OR 
+$ hadoop fs -ls /user/<your login-id>
+
+Copy the file NYSE_dividends.tsv from nyse sub-directory to your newly created HDFS sub-directory named nyse
+$ hadoop fs -put nyse/NYSE_dividends.tsv nyse
+OR
+$ hadoop fs -put nyse/NYSE_dividends.tsv nyse/NYSE_dividends.tsv
+OR
+$ hadoop fs -put /home/<your-login-id>/nyse/NYSE_dividends.tsv /user/<your-login-id>/nyse/NYSE_dividends.tsv
+
+List the contents of the HDFS directory nyse
+$ hadoop fs -ls nyse
+OR
+$ hadoop fs -ls /user/<your-login-id>/nyse
+
+Display the last 1KB of the newly copied file
+$ hadoop fs -tail /user/<your-login-id>/nyse/NYSE_dividends.tsv
+OR 
+$ hadoop fs -tail nyse/NYSE_dividends.tsv
+
+Similarly copy the file NYSE_daily.tsv to the HDFS sub-directory nyse in your HDFS default dir
